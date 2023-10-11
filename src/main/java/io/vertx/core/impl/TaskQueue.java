@@ -38,6 +38,7 @@ public class TaskQueue {
   // @protectedby tasks
   private final LinkedList<Task> tasks = new LinkedList<>();
   private Executor currentExecutor;
+
   private Thread currentThread;
 
   private final Runnable runner;
@@ -125,16 +126,27 @@ public class TaskQueue {
    */
   public void execute(Runnable task, Executor executor) {
     synchronized (tasks) {
-      tasks.add(new ExecuteTask(task, executor));
+      ExecuteTask executeTask = new ExecuteTask(task, executor);
+      tasks.add(executeTask);
       if (currentExecutor == null) {
         currentExecutor = executor;
         try {
           executor.execute(runner);
         } catch (RejectedExecutionException e) {
           currentExecutor = null;
+          tasks.remove(executeTask);
           throw e;
         }
       }
+    }
+  }
+
+  /**
+   * Test if the task queue is empty and no current executor is running any more
+   */
+  public boolean isEmmpty() {
+    synchronized (tasks) {
+      return tasks.isEmpty() && currentExecutor == null;
     }
   }
 
